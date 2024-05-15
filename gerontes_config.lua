@@ -1,11 +1,11 @@
 gerontes_config =  {
     ['net'] = {
-        ['bs-f5-proxy'] = {
+        ['a'] = {
             ['ip'] = '10.74.58.10',
             ['port'] = 3128,
             ['value'] = 0
         },
-        ['bap-f5-proxy'] = {
+        ['b'] = {
             ['ip'] = '10.74.58.150',
             ['port'] = 3128,
             ['value'] = 0
@@ -30,7 +30,7 @@ gerontes_config =  {
                 [1] = 'redis'
             },
             ['net'] = {
-                [1] = 'bap-f5-proxy'
+                [1] = 'a'
             }
         }
     }
