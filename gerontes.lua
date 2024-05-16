@@ -3,7 +3,7 @@ require('print_r');
 local gerontes = {}
 
 local function task_netcheck(target, sleep)
-    core.Info('Start network check: ' .. target)
+    core.Info('GERONTES: start network check: ' .. target)
     local errors = 0
     while true do
         local d = data['net'][target]
@@ -17,7 +17,7 @@ local function task_netcheck(target, sleep)
             v = 1
             errors = 0
             if d['value'] == 0 then
-                core.Info('Netcheck ' .. target .. ' ok\n')
+                core.Info('GERONTES: netcheck ' .. target .. ' ok\n')
             end
         else
             v = d['value']
@@ -25,9 +25,9 @@ local function task_netcheck(target, sleep)
             if errors > 10 then
                 r = 0
                 s = 10 * sleep
-                core.Alert('Netcheck ' .. target .. ' hard-failed\n')
+                core.Alert('GERONTES: netcheck ' .. target .. ' hard-failed\n')
             else
-                core.Warning('Netcheck ' .. target .. ' soft-failed -> ' .. v .. ', ' .. errors .. '\n')
+                core.Warning('GERONTES: netcheck ' .. target .. ' soft-failed -> ' .. v .. ', ' .. errors .. '\n')
             end
         end 
         data['net'][target]['value'] = v
@@ -36,7 +36,7 @@ local function task_netcheck(target, sleep)
 end
 
 local function task_servercheck(target, sleep)
-    core.Info('Start server check: ' .. target)
+    core.Info('GERONTES: start server check: ' .. target)
     local errors = 0
     local h = core.httpclient()
     while true do
@@ -59,17 +59,17 @@ local function task_servercheck(target, sleep)
                 v = v
             end
             if d['value'] == 0 then
-                core.Info('Servercheck ' .. target .. ': ' .. v .. '\n')
+                core.Info('GERONTES: servercheck ' .. target .. ': ' .. v .. '\n')
             end
         else
             errors = errors + 1
             if errors > 3 then
                 s = 10 * sleep
                 v = 0
-                core.Alert('Servercheck ' .. target .. ' hard-failed\n')
+                core.Alert('GERONTES: servercheck ' .. target .. ' hard-failed\n')
             else
                 v = d['value']
-                core.Warning('Servercheck ' .. target .. ' soft-failed -> ' .. v .. ', ' .. errors .. '\n')
+                core.Warning('GERONTES: servercheck ' .. target .. ' soft-failed -> ' .. v .. ', ' .. errors .. '\n')
             end
         end
         data['servers'][target]['value'] = v
@@ -95,19 +95,55 @@ local function service_dump(applet)
 end
 
 local function service_check(applet)
+    local r = 'down\n'
+    local sv = 0
+    local sn
     local cmd = applet:getline()
     cmd = cmd:gsub('[\n\r]', '')
     cmd = core.tokenize(cmd, '_')
     local group = cmd[1]
     local server = cmd[2]
-    local weight = cmd[3]
-    if weight then
-        weight = tonumber(weight)
+    core.Debug('GERONTES: check: group=' .. group .. ', server=' .. server)
+    local g = data[group]
+    if g then
+        -- check network conectivity 
+        local r_n = 1
+        if g['net'] then
+            r_n = 0
+            for _,n in ipairs(g['net']) do
+                if data['net'][n] then
+                    if data['net'][n]['value'] then
+                        -- if at least one netcheck is up -> OK
+                        r_n = 1
+                        break
+                    end
+                else
+                    core.Error('GERONTES: check: group `' .. group .. '`, netcheck `' .. n .. '` not in config')
+                    break
+                end
+            end
+        end
+        if r_n then
+            for _,s in ipairs(g['servers']) do
+                if data['servers'][s] then
+                    if (sv == 0) or ((data['servers'][s]['value'] > 0) and (data['servers'][s]['value'] < sv)) then
+                        sv = data['servers'][s]['value']
+                        sn = s
+                    end  
+                else
+                    core.Error('GERONTES: check: group `' .. group .. '`, server `' .. s .. '` not in config')
+                    sv = 0
+                    break
+                end
+            end
+            if (sn == server) and (sv > 0) then
+                r = 'up\n'
+            end
+        end
     else
-        weight = 0
+        core.Error('GERONTES: check: group `' .. group .. '` not in config')
     end
-    core.Info('Health check: cmd: group=' .. group .. ', server=' .. server .. ', weight=' .. weight)
-    
+    applet.send(r)    
 end
 
 data = {}
