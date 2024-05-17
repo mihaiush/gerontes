@@ -19,6 +19,11 @@ gerontes_config =  {
             ['type'] = 'start_time_sec',
             ['url'] = 'http://localhost:15020/stats/prometheus',
             ['selector'] = '^redis_start_time_seconds%s+([^%s]+)$',
+        },
+        ['mariadb'] = {
+            ['type'] = 'up_time_sec',
+            ['url'] = 'http://localhost:9104/metrics',
+            ['selector'] = '^mysql_global_status_uptime%s+([^%s]+)$',
         }
     },
     ['groups'] = {
