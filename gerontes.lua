@@ -61,6 +61,10 @@ local function task_servercheck(target)
             if d.type == 'up_time_sec' then
                 v = os.time() - v
             end
+            v = 100 * v
+            if d.weight then
+                v = v + d.weight
+            end
             if d.value == 0 then
                 core.Info('GERONTES: servercheck ' .. target .. ': ' .. v .. '\n')
             end
@@ -98,7 +102,7 @@ local function service_dump(applet)
 end
 
 local function service_check(applet)
-    local r = 'down\n'
+    local r = 'down'
     local sv = 0
     local sn
     local cmd = applet:getline()
@@ -130,7 +134,7 @@ local function service_check(applet)
                     end  
                 end
                 if (sn == server) and (sv > 0) then
-                    r = 'up\n'
+                    r = 'up'
                 end
             end
         else
@@ -141,7 +145,7 @@ local function service_check(applet)
         core.Alert('GERONTES: check: cmd: group `' .. group .. '` not in config')
         print_r(data.groups)
     end
-    applet:send(r)    
+    applet:send(r .. '\n')    
 end
 
 data = {}
@@ -204,6 +208,9 @@ function gerontes.init(cfg)
 
     for t,x in pairs(data.servers) do
         x.value = 0
+        if not x.weight then
+            x.weight = 0
+        end
         core.register_task(task_servercheck, t)
     end    
 
