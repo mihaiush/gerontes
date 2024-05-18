@@ -10,7 +10,7 @@ local function task_netcheck(target)
     while true do
         local s = sleep
         local t = core.tcp()
-        t:settimeout(data.params.timeout)
+        t:settimeout(data.params.timeout_tcp)
         local r = t:connect(d.ip, d.port)
         t:close()
         local v
@@ -29,13 +29,10 @@ local function task_netcheck(target)
                 core.Alert('GERONTES: netcheck ' .. target .. ' hard-failed\n')
             else
                 core.Warning('GERONTES: netcheck ' .. target .. ' soft-failed -> ' .. v .. ', ' .. errors .. '\n')
-                s = 0 -- it takes at least timeout seconds to do a failed check
             end
         end 
         d.value = v
-        if not (s == 0) then
-            core.msleep(s)
-        end
+        core.msleep(s)
     end
 end
 
@@ -45,7 +42,7 @@ local function task_servercheck(target)
     local h = core.httpclient()
     local d = data.servers[target]
     local sleep = 1000 * data.params.sleep
-    local timeout = 1000 * data.params.timeout
+    local timeout = 1000 * data.params.timeout_http
     while true do
         local s = sleep
         local r = h:get{url=d.url, timeout=timeout}
@@ -76,13 +73,10 @@ local function task_servercheck(target)
             else
                 v = d.value
                 core.Warning('GERONTES: servercheck ' .. target .. ' soft-failed -> ' .. v .. ', ' .. errors .. '\n')
-                s = 0
             end
         end
         d.value = v
-        if not (s == 0) then
-            core.msleep(s)
-        end
+        core.msleep(s)
     end
 end
 
@@ -115,51 +109,37 @@ local function service_check(applet)
     core.Debug('GERONTES: check: group=' .. group .. ', server=' .. server)
     local g = data.groups[group]
     if g then
-        -- print_r(g)
-        if data.servers[server] then
+        if g.servers[server] then
             -- check network conectivity 
             local r_n = 1
             if g.net then
-                -- print_r(g['net'])
                 r_n = 0
                 for _,n in ipairs(g.net) do
-                    if data.net[n] then
-                        if data.net[n].value == 1 then
-                            -- if at least one netcheck is up -> OK
-                            -- print_r(data['net'][n])
-                            r_n = 1
-                            break
-                        end
-                    else
-                        core.Alert('GERONTES: check: group `' .. group .. '`, netcheck `' .. n .. '` not in config')
+                    if data.net[n].value == 1 then
+                        -- if at least one netcheck is up -> OK
+                        r_n = 1
                         break
                     end
                 end
             end
             if r_n == 1 then
                 for _,s in ipairs(g.servers) do
-                    -- print_r(s)
-                    -- print_r(data['servers'][s])
-                    if data.servers[s] then
-                        if (sv == 0) or ((data.servers[s].value > 0) and (data.servers[s].value < sv)) then
-                            sv = data.servers[s].value
-                            sn = s
-                        end  
-                    else
-                        core.Alert('GERONTES: check: group `' .. group .. '`, server `' .. s .. '` not in config')
-                        sv = 0
-                        break
-                    end
+                    if (sv == 0) or ((data.servers[s].value > 0) and (data.servers[s].value < sv)) then
+                        sv = data.servers[s].value
+                        sn = s
+                    end  
                 end
                 if (sn == server) and (sv > 0) then
                     r = 'up\n'
                 end
             end
         else
-            core.Alert('GERONTES: check: cmd: server `' .. server .. '` not in config')
+            core.Alert('GERONTES: check: cmd: server `' .. server .. '` not in group `' .. group .. '`')
+            print_r(g)
         end
     else
         core.Alert('GERONTES: check: cmd: group `' .. group .. '` not in config')
+        print_r(data.groups)
     end
     applet:send(r)    
 end
@@ -168,6 +148,8 @@ data = {}
 
 function gerontes.init(cfg)
     data = cfg
+
+    -- default parameters
     p = data.params
     if not p then
         data.params = {}
@@ -176,9 +158,12 @@ function gerontes.init(cfg)
     if not p.sleep then
         p.sleep = 0.3
     end
-    if not p.timeout then
-        p.timeout = 2
+    if not p.timeout_tcp then
+        p.timeout_tcp = p.sleep
     end    
+    if not p.timeout_http then
+        p.timeout_http = 5 * p.sleep
+    end
     if not p.fail_multiplier then
         p.fail_multiplier = 10
     end
@@ -189,6 +174,28 @@ function gerontes.init(cfg)
         p.fail_soft_server = 3
     end
     print_r(data)
+
+    -- check config
+    local err = false
+    for gn, gd in pairs(data.groups) do
+        for _,x in ipairs(gd.servers) do
+            if not data.servers[x] then
+                core.Alert('GERONTES: config: server ' .. gn .. '/' .. x .. ' unknown')
+                err = true
+            end
+        end
+        if gd.net then
+            for _,x in ipairs(gd.net) do
+                if not data.net[x] then
+                    core.Alert('GERONTES: config: net ' .. gn .. '/' .. x .. ' unknown')
+                    err = true
+                end
+            end
+        end
+    end
+    if err then
+        error('GERONTES: config error')
+    end    
 
     for t,x in pairs(data.net) do
         x.value = 0
