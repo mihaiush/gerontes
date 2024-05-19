@@ -195,6 +195,8 @@ function gerontes.init(cfg)
                     err = true
                 end
             end
+        else
+            gd.net = {}
         end
     end
     if err then
