@@ -25,22 +25,6 @@ gerontes_config =  {
             selector = '^mysql_global_status_uptime%s+([^%s]+)$',
             weight = 1
         }
-    },
-    groups = {
-        lcl = {
-            servers = {
-                'redis'
-            }
-        },
-        glb = {
-            servers = {
-                'redis'
-            },
-            net = {
-                'c',
-                'a'
-            }
-        }
     }
 }
 
