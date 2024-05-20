@@ -9,8 +9,8 @@ gerontes_config =  {
             port = 3128,
         },
         c = {
-            ip = '12.0.0.1',
-            port = 1111,
+            ip = '127.0.0.1',
+            port = 111,
         }
     },
     servers = {
