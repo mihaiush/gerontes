@@ -23,9 +23,9 @@ local function task_netcheck(target)
             if errors > data.params.fail_soft_net then
                 r = 0
                 s = data.params.fail_multiplier * sleep
-                core.Alert('GERONTES: netcheck ' .. target .. ' hard-failed\n')
+                core.Alert('GERONTES: netcheck: ' .. target .. ': hard-failed')
             else
-                core.Warning('GERONTES: netcheck ' .. target .. ' soft-failed: ' .. v .. ', ' .. errors .. '\n')
+                core.Warning('GERONTES: netcheck: ' .. target .. ': soft-failed: ' .. v .. ', ' .. errors .. '/' .. data.params.fail_soft_net)
             end
         end 
         d.old_value = d.value
@@ -71,10 +71,10 @@ local function task_servercheck(target)
             if errors > data.params.fail_soft_server then
                 s = data.params.fail_multiplier * sleep
                 v = 0
-                core.Alert('GERONTES: servercheck ' .. target .. ' hard-failed\n')
+                core.Alert('GERONTES: servercheck: ' .. target .. ': hard-failed')
             else
                 v = d.value
-                core.Warning('GERONTES: servercheck ' .. target .. ' soft-failed: ' .. v .. ', ' .. errors .. '\n')
+                core.Warning('GERONTES: servercheck: ' .. target .. ': soft-failed: ' .. v .. ', ' .. errors .. '/' .. data.params.fail_soft_server)
             end
         end
         d.old_value = d.value
