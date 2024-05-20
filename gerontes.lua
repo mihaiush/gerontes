@@ -51,6 +51,10 @@ local function task_servercheck(target)
         local s = sleep
         local r = h:get{url=d.url, timeout=timeout}
         local v = nil
+        if d.type == 'precalc' then
+            -- when d.url points to service_server on another haproxy
+            d.selector = '^([%d%.]+)$'
+        end
         if r then
             for _,l in ipairs(core.tokenize(r.body, '\n')) do
                 _, _, v = l:find(d.selector)
@@ -62,12 +66,14 @@ local function task_servercheck(target)
         if v then
             errors = 0
             v = tonumber(v)
-            if d.type == 'up_time_sec' then
-                v = os.time() - v
-            end
-            v = 100 * v
-            if d.weight then
-                v = v + d.weight
+            if not (d.type == 'precalc') then
+                if d.type == 'up_time_sec' then
+                    v = os.time() - v
+                end
+                v = 100 * v
+                if d.weight then
+                    v = v + d.weight
+                end
             end
         else
             errors = errors + 1
@@ -95,16 +101,6 @@ local function task_servercheck(target)
 end
 
 local function service_dump(applet)
-    --[[
-    local r = 'net:\n'
-    for t,v in pairs(data.net) do
-        r = r .. '  ' .. t .. ' -> ' .. v.value .. '\n'
-    end
-    r = r .. 'servers:\n'
-    for t,v in pairs(data.servers) do
-        r = r .. '  ' .. t .. ' -> ' .. v.value .. '\n'
-    end
-    --]]
     local r = ''
     local function concat_r(x)
         r = r .. x
@@ -116,6 +112,30 @@ local function service_dump(applet)
     applet:add_header("content-type", "text/plain")
     applet:start_response()
     applet:send(r)
+end
+
+local function service_server(applet)
+    -- path must be /ENDPOINT/SERVER
+    local s = core.tokenize(applet.path, '/')
+    s = s[3]
+    local s
+    if s and data.servers[s] then
+        s = data.servers[s].value
+    else
+        s = nil
+    end
+    
+    if s then
+        s = tostring(s)
+        applet:add_header("content-type", "text/plain")
+        applet:set_status(200)
+        applet:add_header("content-length", string.len(s))
+        applet:start_response()
+        applet:send(s)    
+    else
+        applet:set_status(404)
+        applet:start_response()
+    end
 end
 
 function set_group(group)
@@ -142,10 +162,10 @@ function set_group(group)
     end
     for sn,so in pairs(core.backends[d.backend].servers) do
         if sn == master then
-            core.Info('GERONTES: set_group:' .. group .. ': ' .. d.backend .. '/' .. sn .. ' UP')
+            core.Info('GERONTES: set_group: ' .. group .. ': ' .. d.backend .. '/' .. sn .. ' UP')
             so:check_force_up()
         else
-            core.Info('GERONTES: set_group:' .. group .. ': ' .. d.backend .. '/' .. sn .. ' DOWN')
+            core.Info('GERONTES: set_group: ' .. group .. ': ' .. d.backend .. '/' .. sn .. ' DOWN')
             so:check_force_down()
         end
     end
@@ -199,6 +219,7 @@ function gerontes.init(cfg)
     end
 
     core.register_service('gerontes_dump', 'http', service_dump)
+    core.register_service('gerontes_server', 'http', service_server)
 
     core.register_init(
         function()

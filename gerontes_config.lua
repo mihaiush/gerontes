@@ -17,13 +17,13 @@ gerontes_config =  {
         redis = {
             type = 'start_time_sec',
             url = 'http://localhost:15020/stats/prometheus',
-            selector = '^redis_start_time_seconds%s+([^%s]+)$'
+            selector = '^redis_start_time_seconds%s+([^%s]+)$',
+            weight = 1
         },
         mariadb = {
             type = 'up_time_sec',
             url = 'http://localhost:9104/metrics',
             selector = '^mysql_global_status_uptime%s+([^%s]+)$',
-            weight = 1
         }
     }
 }
