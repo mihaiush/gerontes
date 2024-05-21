@@ -51,8 +51,8 @@ local function task_servercheck(target)
         local s = sleep
         local r = h:get{url=d.url, timeout=timeout}
         local v = nil
+        -- d.url call returns the final value
         if d.type == 'precalc' then
-            -- when d.url points to service_server on another haproxy
             d.selector = '^([%d%.]+)$'
         end
         if r then
@@ -114,24 +114,32 @@ local function service_dump(applet)
     applet:send(r)
 end
 
-local function service_server(applet)
-    -- path must be /ENDPOINT/SERVER
-    local s = core.tokenize(applet.path, '/')
-    s = s[3]
-    local s
-    if s and data.servers[s] then
-        s = data.servers[s].value
+local function service_get(applet)
+    -- path must be /ENDPOINT/server|group/NAME
+    local path = core.tokenize(applet.path, '/')
+    local tp = path[3]
+    local n = path[4]
+    local r = nil
+
+    if tp == 'server' then
+        if n and data.servers[n] then
+            r = data.servers[n].value
+        end
     else
-        s = nil
+        if tp == 'group' then
+            if n and data.groups[n] then
+                r = data.groups[n].value
+            end
+        end
     end
-    
-    if s then
-        s = tostring(s)
+
+    if r then
+        r = tostring(r)
         applet:add_header("content-type", "text/plain")
         applet:set_status(200)
-        applet:add_header("content-length", string.len(s))
+        applet:add_header("content-length", r:len())
         applet:start_response()
-        applet:send(s)    
+        applet:send(r)    
     else
         applet:set_status(404)
         applet:start_response()
@@ -142,6 +150,7 @@ function set_group(group)
     local d = data.groups[group]
     local master = nil
     local net_ok = true
+    local v = 0
     if d.net then
         net_ok = false
         for _,n in ipairs(d.net) do
@@ -152,16 +161,16 @@ function set_group(group)
         end
     end
     if net_ok then
-        local v = 0
         for _,s in ipairs(d.servers) do
-            if not (data.servers[s].value == 0) and (data.servers[s].value < v) then
+            if (v == 0) or (data.servers[s].value < v) then
                 v = data.servers[s].value
                 master = s
             end
         end
     end
+    d.value = v
     for sn,so in pairs(core.backends[d.backend].servers) do
-        if sn == master then
+        if (sn == master) and (v > 0) then
             core.Info('GERONTES: set_group: ' .. group .. ': ' .. d.backend .. '/' .. sn .. ' UP')
             so:check_force_up()
         else
@@ -203,13 +212,15 @@ function gerontes.init(cfg)
 
     data.groups = {}
 
-    for t,x in pairs(data.net) do
+    -- defaults for netchecks
+    for _,x in pairs(data.net) do
         x.value = 0
         x.old_value = -1
         x.groups = {}
     end
 
-    for t,x in pairs(data.servers) do
+    -- defaults for servers
+    for _,x in pairs(data.servers) do
         x.value = 0
         x.old_value = -1
         x.groups = {}
@@ -219,8 +230,9 @@ function gerontes.init(cfg)
     end
 
     core.register_service('gerontes_dump', 'http', service_dump)
-    core.register_service('gerontes_server', 'http', service_server)
+    core.register_service('gerontes_get', 'http', service_get)
 
+    -- runs after haproxy config load
     core.register_init(
         function()
             local err = false
@@ -231,7 +243,7 @@ function gerontes.init(cfg)
                 if g then
                     core.Info('GERONTES: group: found `' .. g .. '`')
                     -- add servers to group
-                    data.groups[g] = { backend=bn, servers={}, net={} }
+                    data.groups[g] = { backend=bn, servers={}, net={}, value=0 }
                     for s,_ in pairs(bd.servers) do
                         if not data.servers[s] then
                             err = true
@@ -261,18 +273,18 @@ function gerontes.init(cfg)
                 end
             end
 
-            for t,x in pairs(data.net) do
-                core.register_task(task_netcheck, t)
-            end
-
-            for t,x in pairs(data.servers) do
-                core.register_task(task_servercheck, t)
-            end
-
             print_r(data)
 
             if err then
                 error('GERONTES: config error')
+            end
+
+            -- register check tasks after data processing done
+            for t,_ in pairs(data.net) do
+                core.register_task(task_netcheck, t)
+            end
+            for t,_ in pairs(data.servers) do
+                core.register_task(task_servercheck, t)
             end
         end
     )
