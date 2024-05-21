@@ -1,16 +1,16 @@
 require('print_r');
 
-local gerontes = {}
+gerontes = {}
 
-local function task_netcheck(target)
+function task_netcheck(target)
     core.Info('GERONTES: start network check: ' .. target)
     local errors = 0
-    local sleep = 1000 * data.params.sleep
-    local d = data.net[target]
+    local sleep = 1000 * gerontes.data.params.sleep
+    local d = gerontes.data.net[target]
     while true do
         local s = sleep
         local t = core.tcp()
-        t:settimeout(data.params.timeout_tcp)
+        t:settimeout(gerontes.data.params.timeout_tcp)
         local r = t:connect(d.ip, d.port)
         t:close()
         local v
@@ -20,12 +20,12 @@ local function task_netcheck(target)
         else
             v = d.value
             errors = errors + 1
-            if errors > data.params.fail_soft_net then
+            if errors > gerontes.data.params.fail_soft_net then
                 r = 0
-                s = data.params.fail_multiplier * sleep
+                s = gerontes.data.params.fail_multiplier * sleep
                 core.Alert('GERONTES: netcheck: ' .. target .. ': hard-failed')
             else
-                core.Warning('GERONTES: netcheck: ' .. target .. ': soft-failed: ' .. v .. ', ' .. errors .. '/' .. data.params.fail_soft_net)
+                core.Warning('GERONTES: netcheck: ' .. target .. ': soft-failed: ' .. v .. ', ' .. errors .. '/' .. gerontes.data.params.fail_soft_net)
             end
         end 
         d.old_value = d.value
@@ -40,13 +40,13 @@ local function task_netcheck(target)
     end
 end
 
-local function task_servercheck(target)
+function task_servercheck(target)
     core.Info('GERONTES: start server check: ' .. target)
     local errors = 0
     local h = core.httpclient()
-    local d = data.servers[target]
-    local sleep = 1000 * data.params.sleep
-    local timeout = 1000 * data.params.timeout_http
+    local d = gerontes.data.servers[target]
+    local sleep = 1000 * gerontes.data.params.sleep
+    local timeout = 1000 * gerontes.data.params.timeout_http
     while true do
         local s = sleep
         local r = h:get{url=d.url, timeout=timeout}
@@ -77,13 +77,13 @@ local function task_servercheck(target)
             end
         else
             errors = errors + 1
-            if errors > data.params.fail_soft_server then
-                s = data.params.fail_multiplier * sleep
+            if errors > gerontes.data.params.fail_soft_server then
+                s = gerontes.data.params.fail_multiplier * sleep
                 v = 0
                 core.Alert('GERONTES: servercheck: ' .. target .. ': hard-failed')
             else
                 v = d.value
-                core.Warning('GERONTES: servercheck: ' .. target .. ': soft-failed: ' .. v .. ', ' .. errors .. '/' .. data.params.fail_soft_server)
+                core.Warning('GERONTES: servercheck: ' .. target .. ': soft-failed: ' .. v .. ', ' .. errors .. '/' .. gerontes.data.params.fail_soft_server)
             end
         end
         d.old_value = d.value
@@ -100,12 +100,12 @@ local function task_servercheck(target)
     end
 end
 
-local function service_dump(applet)
+function service_dump(applet)
     local r = ''
     local function concat_r(x)
         r = r .. x
     end
-    print_r(data,false,concat_r)    
+    print_r(gerontes.data,false,concat_r)    
 
     applet:set_status(200)
     applet:add_header("content-length", string.len(r))
@@ -114,7 +114,7 @@ local function service_dump(applet)
     applet:send(r)
 end
 
-local function service_get(applet)
+function service_get(applet)
     -- path must be /ENDPOINT/server|group/NAME
     local path = core.tokenize(applet.path, '/')
     local tp = path[3]
@@ -122,13 +122,13 @@ local function service_get(applet)
     local r = nil
 
     if tp == 'server' then
-        if n and data.servers[n] then
-            r = data.servers[n].value
+        if n and gerontes.data.servers[n] then
+            r = gerontes.data.servers[n].value
         end
     else
         if tp == 'group' then
-            if n and data.groups[n] then
-                r = data.groups[n].value
+            if n and gerontes.data.groups[n] then
+                r = gerontes.data.groups[n].value
             end
         end
     end
@@ -147,14 +147,14 @@ local function service_get(applet)
 end
 
 function set_group(group)
-    local d = data.groups[group]
+    local d = gerontes.data.groups[group]
     local master = nil
     local net_ok = true
     local v = 0
     if d.net then
         net_ok = false
         for _,n in ipairs(d.net) do
-            if data.net[n].value == 1 then
+            if gerontes.data.net[n].value == 1 then
                 net_ok = true
                 break
             end
@@ -162,8 +162,8 @@ function set_group(group)
     end
     if net_ok then
         for _,s in ipairs(d.servers) do
-            if (v == 0) or (data.servers[s].value < v) then
-                v = data.servers[s].value
+            if (v == 0) or (gerontes.data.servers[s].value < v) then
+                v = gerontes.data.servers[s].value
                 master = s
             end
         end
@@ -180,16 +180,16 @@ function set_group(group)
     end
 end
 
-data = {}
+gerontes.data = {}
 
-function gerontes.init(cfg)
-    data = cfg
+function gerontes.init(data)
+    gerontes.data = data
     
     -- default parameters
-    p = data.params
+    p = gerontes.data.params
     if not p then
-        data.params = {}
-        p = data.params
+        gerontes.data.params = {}
+        p = gerontes.data.params
     end
     if not p.sleep then
         p.sleep = 0.3
@@ -210,17 +210,17 @@ function gerontes.init(cfg)
         p.fail_soft_server = 3
     end
 
-    data.groups = {}
+    gerontes.data.groups = {}
 
     -- defaults for netchecks
-    for _,x in pairs(data.net) do
+    for _,x in pairs(gerontes.data.net) do
         x.value = 0
         x.old_value = -1
         x.groups = {}
     end
 
     -- defaults for servers
-    for _,x in pairs(data.servers) do
+    for _,x in pairs(gerontes.data.servers) do
         x.value = 0
         x.old_value = -1
         x.groups = {}
@@ -243,15 +243,15 @@ function gerontes.init(cfg)
                 if g then
                     core.Info('GERONTES: group: found `' .. g .. '`')
                     -- add servers to group
-                    data.groups[g] = { backend=bn, servers={}, net={}, value=0 }
+                    gerontes.data.groups[g] = { backend=bn, servers={}, net={}, value=0 }
                     for s,_ in pairs(bd.servers) do
-                        if not data.servers[s] then
+                        if not gerontes.data.servers[s] then
                             err = true
                             core.Alert('GERONTES: group: ' .. g .. ': server `' .. s ..'`, backend `' .. bn .. '` not found in config')
                         else
                             core.Alert('GERONTES: group: ' .. g .. ': server `' .. s ..'`')
-                            table.insert(data.groups[g].servers, s)
-                            table.insert(data.servers[s].groups, g)
+                            table.insert(gerontes.data.groups[g].servers, s)
+                            table.insert(gerontes.data.servers[s].groups, g)
                         end
                     end
                     -- add netchecks to group
@@ -259,13 +259,13 @@ function gerontes.init(cfg)
                         _, _, n = n:find(':netcheck_(.+)')
                         if n then
                             for _,n in ipairs(core.tokenize(n, '_')) do
-                                if not data.net[n] then
+                                if not gerontes.data.net[n] then
                                     err = true
                                     core.Alert('GERONTES: group: ' .. g .. ': netcheck `' .. n ..'`, backend `' .. bn .. '` not found in config')
                                 else
                                     core.Alert('GERONTES: group: ' .. g .. ': netcheck `' .. n ..'`')
-                                    table.insert(data.groups[g].net, n)
-                                    table.insert(data.net[n].groups, g)
+                                    table.insert(gerontes.data.groups[g].net, n)
+                                    table.insert(gerontes.data.net[n].groups, g)
                                 end
                             end 
                         end
@@ -280,10 +280,10 @@ function gerontes.init(cfg)
             end
 
             -- register check tasks after data processing done
-            for t,_ in pairs(data.net) do
+            for t,_ in pairs(gerontes.data.net) do
                 core.register_task(task_netcheck, t)
             end
-            for t,_ in pairs(data.servers) do
+            for t,_ in pairs(gerontes.data.servers) do
                 core.register_task(task_servercheck, t)
             end
         end
