@@ -252,9 +252,10 @@ function gerontes.init(data)
         function()
             local err = false
             local g
+            local opt
             local n
             for bn,bd in pairs(core.backends) do
-                _, _, g, n = bn:find('(.+)__gerontes(.*)')
+                _, _, g, opt = bn:find('(.+)__gerontes(.*)')
                 if g then
                     core.Info('GERONTES: group: found `' .. g .. '` in backend `' .. bn .. '`')
                     -- add servers to group
@@ -270,8 +271,8 @@ function gerontes.init(data)
                         end
                     end
                     -- add netchecks to group
-                    if n then
-                        _, _, n = n:find(':netcheck_(.+)')
+                    if opt then
+                        _, _, n = opt:find(':netcheck_(.+)')
                         if n then
                             for _,n in ipairs(core.tokenize(n, '_')) do
                                 if not gerontes.net[n] then
@@ -283,6 +284,15 @@ function gerontes.init(data)
                                     table.insert(gerontes.net[n].groups, g)
                                 end
                             end 
+                        else
+                            n, _, _ = opt:find(':netcheck')
+                            if n then
+                                for n, _ in pairs(gerontes.net) do
+                                    core.Alert('GERONTES: group: ' .. g .. ': netcheck `' .. n ..'`')
+                                    table.insert(gerontes.groups[g].net, n)
+                                    table.insert(gerontes.net[n].groups, g)
+                                end
+                            end
                         end
                     end
                 end
