@@ -100,6 +100,29 @@ function task_servercheck(target)
     end
 end
 
+function service_ready(applet)
+    -- ready only if all the checks have run at least one time
+    local rc = 200
+    
+    for _,x in pairs(gerontes.net) do
+        if x.old_value == -1 then
+            rc = 503 
+            break
+        end
+    end
+
+    for _,x in pairs(gerontes.servers) do
+        if x.old_value == -1 then
+            rc = 503
+            break
+        end
+    end
+
+    applet:set_status(rc)
+    applet:add_header("content-length", 0)
+    applet:start_response()
+end
+
 function service_dump(applet)
     local r = ''
     local function concat_r(x)
@@ -244,6 +267,7 @@ function gerontes.init(data)
         end
     end
 
+    core.register_service('gerontes_ready', 'http', service_ready)
     core.register_service('gerontes_dump', 'http', service_dump)
     core.register_service('gerontes_get', 'http', service_get)
 
