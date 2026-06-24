@@ -133,6 +133,7 @@ OPT.timeout        = 1     -- check timeout seconds
 OPT.softFail       = 5     -- how many times a server check can fail before marking it down
 OPT.failMultiplier = 15    -- multiplier of sleep in case the server/network were marked down
 OPT.ipcSock        = '/dev/shm/gerontes-ipc.sock'   -- socket used for communication with background processes
+OPT.kubeApi        = '/dev/shm/gerontes-kubeapi.sock'
 OPT.debug          = false
 OPT.xCheck         = nil   -- what backend to use for extra check
 OPT.xCheckFreeze   = false -- if xCheck fails no updates, freeze status

@@ -13,7 +13,7 @@ local function server_worker(srvtype, target, worker, apicall)
     utils.log.debug(label .. 'api call: ' .. apicall)
 
     local request = 'GET ' .. apicall .. ' HTTP/1.1\r\n' ..
-                    'Host: 127.0.0.1:8082\r\n' ..
+                    'Host: 127.0.0.1\r\n' ..
                     '\r\n'
 
     local sleep = 1000 * OPT.sleep
@@ -31,7 +31,7 @@ local function server_worker(srvtype, target, worker, apicall)
         tcp:settimeout(OPT.timeout)
         local t0 = utils.now()
         utils.log.debug(label .. 'connect')
-        ok, r = tcp:connect('127.0.0.1', 8082)
+        ok, r = tcp:connect('unix@' .. OPT.kubeApi)
         if ok then
             ok, r = tcp:send(request)
             if ok then
