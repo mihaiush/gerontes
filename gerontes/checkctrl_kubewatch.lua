@@ -20,6 +20,8 @@ local function server_worker(srvtype, target, worker, apicall)
     local err = 0
 
     core.sleep(2) -- wait for servers to start
+
+    M['latency_count'][target] = 0
    
     while true do
         local r = 'unknown'
@@ -79,6 +81,7 @@ local function server_worker(srvtype, target, worker, apicall)
                 if ok then
                     t0 = 1000 * (utils.now() - t0)
                     M['server_latency'][target] = t0
+                    M['latency_count'][target] = M['latency_count'][target] + 1
                     utils.log.debug(label .. 'api latency: ' .. t0)
                 
                     tcp:settimeout(OPT.watchTimeout)

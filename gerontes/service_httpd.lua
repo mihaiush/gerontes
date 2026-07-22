@@ -21,12 +21,16 @@ local function metrics()
 
     for sn,sv in pairs(S) do
         r = r .. 'gerontes_server_value{server="' .. sn .. '"} ' .. tostring(sv) .. '\n'
-        if M['loop_latency'][sn] then
+        if M['loop_latency'][sn] ~= nil then
             r = r .. 'gerontes_loop_latency_msec{server="' .. sn .. '"} ' .. tostring(M['loop_latency'][sn]) .. '\n'
         end
-        if M['server_latency'][sn] then
+        if M['server_latency'][sn] ~= nil then
             r = r .. 'gerontes_server_latency_msec{server="' .. sn .. '"} ' .. tostring(M['server_latency'][sn]) .. '\n'
         end
+        if M['latency_count'][sn] ~= nil then
+            r = r .. 'gerontes_latency_count{server="' .. sn .. '"} ' .. tostring(M['latency_count'][sn]) .. '\n'
+        end
+
     end
 
     for bn,bd in pairs(B) do

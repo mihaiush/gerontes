@@ -20,6 +20,8 @@ local function server_worker(srvtype, target, worker)
     local t0, t1
 
     core.sleep(2) -- wait for servers to start
+
+    M['latency_count'][target] = 0
     
     while true do
         s = sleep
@@ -37,6 +39,7 @@ local function server_worker(srvtype, target, worker)
                     if loop_count >= OPT.latencyMetrics then
                         utils.log.debug(label .. 'check latency: ' .. check_latency / loop_count)
                         M['server_latency'][target] = check_latency / loop_count
+                        M['latency_count'][target] = M['latency_count'][target] + 1
                         loop_count = 0
                         loop_latency = 0
                         check_latency = 0

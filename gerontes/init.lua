@@ -61,7 +61,7 @@ end
 
 B = {} -- backends
 S = {} -- servers
-M = { ['xcheck'] = 0, ['loop_latency'] = {}, ['server_latency'] = {}, ['server_up'] = {}} -- metrics
+M = { ['xcheck'] = 0, ['loop_latency'] = {}, ['server_latency'] = {}, ['server_up'] = {}, ['latency_count'] = {}} -- metrics
 core.register_init(
     function()
         local bo -- backend options
