@@ -31,7 +31,13 @@ local function server_worker(srvtype, target, worker, apicall)
         tcp:settimeout(OPT.timeout)
         local t0 = utils.now()
         utils.log.debug(label .. 'connect')
-        ok, r = tcp:connect('unix@' .. OPT.kubeApi)
+        local ka = utils.split(OPT.kubeApi, ':')
+        if ka[2] then
+            ok, r = tcp:connect(ka[1], ka[2])
+        else
+            ok, r = tcp:connect('unix@' .. ka[1])
+            local ka_addr = 'unix@' .. ka[1]
+        end
         if ok then
             ok, r = tcp:send(request)
             if ok then
@@ -44,7 +50,7 @@ local function server_worker(srvtype, target, worker, apicall)
                         data = data:lower()
                         ok = true
                     else
-                        r = data
+                        r = ok
                         ok = false
                         break
                     end
@@ -90,7 +96,7 @@ local function server_worker(srvtype, target, worker, apicall)
                             else
                                 data = nil
                                 r = ok
-                                ok = true -- most likely watch timeou
+                                ok = true -- most likely watch timeout
                                 s = 1
                                 break
                             end
