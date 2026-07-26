@@ -1,4 +1,4 @@
-ARG VERSION=3.2.16-trixie
+ARG VERSION=3.2.21-trixie
 
 FROM docker.io/haproxy:$VERSION AS build
 
@@ -7,7 +7,7 @@ USER 0
 RUN \
     LUA_VERSION=$(haproxy -vv | awk '/: Lua /{print $NF}' | awk -F'.' '{print $1"."$2}') &&\
     echo "export LUA_VERSION=$LUA_VERSION" >>/environ &&\
-    echo "LUAROCKS='luarocks --lua-version $LUA_VERSION --tree /build'" >>/environ
+    echo "LUAROCKS='luarocks-${LUA_VERSION} --tree /build'" >>/environ
 
 RUN \
     . /environ &&\
@@ -24,6 +24,10 @@ RUN \
         libmariadb-dev-compat \
         libpq-dev \
         libssl-dev
+
+RUN \
+    . /environ &&\
+    luarocks-${LUA_VERSION} install luarocks-build-hooks
 
 RUN \
     . /environ &&\
