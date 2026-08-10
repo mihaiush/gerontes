@@ -15,6 +15,7 @@ return function(applet)
     elseif cmd == 'metrics' then
         M['loop_latency'][l[2]] = l[3]
         M['server_latency'][l[2]] = l[4]
+        M['latency_count'][l[2]] = M['latency_count'][l[2]] + 1
         r = 'ok'
     else
         r = 'err'

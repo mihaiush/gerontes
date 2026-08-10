@@ -21,8 +21,6 @@ local function server_worker(srvtype, target, worker, apicall)
 
     core.sleep(2) -- wait for servers to start
 
-    M['latency_count'][target] = 0
-   
     while true do
         local r = 'unknown'
         local ok = false

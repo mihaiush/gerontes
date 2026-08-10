@@ -1,4 +1,4 @@
-ARG VERSION=3.2.21-trixie
+ARG VERSION=3.4.3-trixie
 
 FROM docker.io/haproxy:$VERSION AS build
 

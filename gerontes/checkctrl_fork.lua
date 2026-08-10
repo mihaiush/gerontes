@@ -70,7 +70,7 @@ local function server_worker(srvtype, target, worker, to_flag)
     end
     
     msleep(2000) -- wait for haproxy init phase to finish and ipc to start
-    if ipc('ping') ~= 'ok' then
+    if not OPT.ipcSock or ipc('ping') ~= 'ok' then
         error(err_ipc_ping)
     end
 

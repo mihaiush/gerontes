@@ -87,6 +87,7 @@ core.register_init(
                     utils.log.info('backend: ' .. bn .. ': server: ' .. sn)
                     table.insert(B[bn]['servers'], sn)
                     S[sn] = 0
+                    M['latency_count'][sn] = 0
                 end
             end
         end
